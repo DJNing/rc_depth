@@ -13,7 +13,7 @@ from radarnet_transforms import Transforms
 from log_utils import log
 from PIL import Image
 from torch.utils.tensorboard import SummaryWriter
-
+from tqdm import tqdm
 
 def train(train_image_path,
           train_radar_path,
@@ -317,7 +317,7 @@ def train(train_image_path,
             augmentation_schedule_pos = augmentation_schedule_pos + 1
             augmentation_probability = augmentation_probabilities[augmentation_schedule_pos]
 
-        for batch_data in train_dataloader:
+        for batch_data in tqdm(train_dataloader):
 
             train_step = train_step + 1
 

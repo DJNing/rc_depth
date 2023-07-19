@@ -297,8 +297,11 @@ def merge_lidar_point_clouds(nusc,
 
     # load the panoptic segmentation mask for the main camera token
     main_camera_panoptic_mask_path = os.path.join(panoptic_seg_dir, main_camera_token + '.npy')
+    # try:
     main_camera_panoptic_mask = np.load(main_camera_panoptic_mask_path)
-
+    # except FileNotFoundError:
+    #     print('main camera token: ', main_camera_token)
+    #     return None
     # Project the lidar frame into the camera frame
     main_points_lidar, main_depth_lidar, main_image = nusc_explorer.map_pointcloud_to_image(
         pointsensor_token=main_lidar_token,
@@ -903,7 +906,7 @@ def process_scene(args):
 
     # Iterate through all samples up to the last sample
     while sample_token != last_sample_token:
-
+        # print('processing sample: %d'%sample_id, end=' ', flush=True)
         # Fetch a single sample
         current_sample = nusc.get('sample', sample_token)
         camera_token = current_sample['data']['CAM_FRONT']
@@ -992,8 +995,23 @@ def process_scene(args):
         ground_truth_paths.append(ground_truth_path)
         ground_truth_interp_paths.append(ground_truth_interp_path)
 
-        if not paths_only:
+        from pathlib import Path as P
+        
+        not_exist = not P(radar_points_path).exists()
+        not_path_only = not paths_only
 
+        is_process = not_exist and not_path_only
+        # print(radar_points_path)
+        # if not not_exist:
+        #     print('file exists, shall be skipped')
+        # if not is_process:
+        #     print('skipping sample')
+        # input('break')
+        # raise RuntimeError
+        if is_process:
+            import time
+            # print('processing scene: %d, sample: %d'%(scene_id, sample_id))
+            start_time = time.time()
             '''
             Get camera data
             '''
@@ -1008,6 +1026,7 @@ def process_scene(args):
                 current_sample_token=sample_token)
 
             data_utils.save_depth(lidar_depth, lidar_path)
+            print('save lidar depth')
 
             '''
             Merge forward and backward point clouds for radar and lidar
@@ -1019,6 +1038,8 @@ def process_scene(args):
                 current_sample_token=sample_token,
                 n_forward=n_forward,
                 n_backward=n_backward)
+            
+            print('merge radar point cloud, multiple frames')
 
             points_radar, depth_radar = merge_radar_point_clouds(
                 nusc=nusc,
@@ -1026,6 +1047,8 @@ def process_scene(args):
                 current_sample_token=sample_token,
                 n_forward=0,
                 n_backward=0)
+            
+            print('merge radar point')
 
             # Merges n_forward and n_backward number of point clouds to frame at sample token
             points_lidar, depth_lidar = merge_lidar_point_clouds(
@@ -1036,6 +1059,8 @@ def process_scene(args):
                 n_backward=n_backward,
                 lidar_camera_correspondence_dict=lidar_camera_correspondence_dict,
                 panoptic_seg_dir=panoptic_seg_dir)
+            
+            print('merge LiDAR points')
 
             '''
             Project point cloud onto the image plane and save as PNG
@@ -1043,6 +1068,7 @@ def process_scene(args):
             # Merges n_forward and n_backward number of point clouds to frame at sample token
             # but in this case we need the lidar image so that we can save it
             ground_truth = points_to_depth_map(points_lidar, depth_lidar, camera_image)
+            print('get ground truth')
 
             # Save depth map as PNG
             data_utils.save_depth(ground_truth, ground_truth_path)
@@ -1075,6 +1101,7 @@ def process_scene(args):
 
             np.save(radar_points_reprojected_path, radar_points_reprojected)
             np.save(radar_points_path, radar_points)
+            print('elapsed time: %.4f for processing scene: %d, sample: %d'%((time.time() - start_time), scene_id, sample_id))
 
         '''
         Move to next sample in scene

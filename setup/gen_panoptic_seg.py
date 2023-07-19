@@ -62,7 +62,11 @@ cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5  # set threshold for this model
 cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-PanopticSegmentation/panoptic_fpn_R_101_3x.yaml")
 predictor = DefaultPredictor(cfg)
 
+from pathlib import Path as P
 save_panoptic_masks_dir = 'data/nuscenes_derived/panoptic_segmentation_masks'
+save_seg_path = 'data/nuscenes_derived/semantic_segmentation'
+P(save_panoptic_masks_dir).mkdir(parents=True, exist_ok=True)
+P(save_seg_path).mkdir(parents=True, exist_ok=True)
 
 def get_id_from_category_id(segments_info):
     '''Returns a list of all output ids to filter. Output Ids 0-8 are moving objects in COCO'
@@ -126,7 +130,7 @@ with torch.no_grad():
             panoptic_seg_filtered = torch.isin(panoptic_seg.to("cpu"),get_id_from_category_id(segments_info))
             panoptic_seg_filtered = panoptic_seg_filtered.numpy()
             
-            path_seg = os.path.join('data/nuscenes_derived/semantic_segmentation', camera_token + '.npy')
+            path_seg = os.path.join(save_panoptic_masks_dir, camera_token + '.npy')
             np.save(path_seg, panoptic_seg_filtered)            
             print('compute segmentation %d/%d, scene number: %d' % ( scene_idx, 850, current_scene_count ) )
             camera_token = camera_data['next']                
